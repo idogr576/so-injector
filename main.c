@@ -22,8 +22,7 @@ int main(int argc, char *argv[])
     pid_t pid = atoi(argv[1]);
     if (errno)
     {
-        perror("");
-        return 2;
+        goto cleanup;
     }
     g_so_path = strdup(argv[2]);
     char cmdline[BUFSIZ] = {0};
@@ -35,25 +34,26 @@ int main(int argc, char *argv[])
     if (!fp)
     {
         printf("could not open file: %s\n", cmdlinePath);
+        goto cleanup;
     }
     fread(cmdline, 1, sizeof(cmdline), fp);
     printf("Intercepting PID %d: %s\n", pid, cmdline);
 
-    State remote_state = {.pid = pid, .n = g_shellcode_bin_len};
-    State *pstate = &remote_state;
+    state_t remote_state = {.pid = pid, .n = g_shellcode_bin_len};
+    state_t *pstate = &remote_state;
 
     if (remote_attach_process(pstate))
     {
         printf("cannot attach to remote process\n");
-        return 3;
+        goto cleanup;
     }
-    printf("stopped remote process at %#llx\n", remote_state.regs.rip);
     time_t start_time = time(NULL);
 
     uintptr_t p = remote_libc_start_address(pstate);
     printf("libc start address is %#lx\n", p);
 
     remote_state_preserve(pstate);
+    printf("stopped remote process at %#llx\n", remote_state.regs.rip);
 
     remote_alloc_args_on_stack(pstate);
 
@@ -71,6 +71,11 @@ int main(int argc, char *argv[])
     printf("remote process was stopped for %ld seconds in total\n", end_time - start_time);
 
 cleanup:
-    free(g_so_path);
+    if (fp)
+        fclose(fp);
+    if (g_so_path)
+        free(g_so_path);
+    if (!errno)
+        perror("");
     return 0;
 }

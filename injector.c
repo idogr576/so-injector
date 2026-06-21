@@ -38,7 +38,7 @@ const size_t g_shellcode_bin_len = sizeof(g_shellcode_bin);
 
 char *g_so_path = NULL;
 
-size_t remote_malloc(int pid, void *addr, uint8_t *buff, size_t n)
+size_t remote_write_mem(int pid, void *addr, uint8_t *buff, size_t n)
 {
     union
     {
@@ -55,7 +55,7 @@ size_t remote_malloc(int pid, void *addr, uint8_t *buff, size_t n)
     return 0;
 }
 
-int remote_attach_process(State *tracee)
+int remote_attach_process(state_t *tracee)
 {
     int wstatus;
     ptrace(PTRACE_ATTACH, tracee->pid, NULL, NULL);
@@ -68,7 +68,7 @@ int remote_attach_process(State *tracee)
     return 0;
 }
 
-int remote_state_preserve(State *tracee)
+int remote_state_preserve(state_t *tracee)
 {
     if (ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->regs) == -1)
     {
@@ -86,7 +86,7 @@ int remote_state_preserve(State *tracee)
     return 0;
 }
 
-int remote_alloc_args_on_stack(State *tracee)
+int remote_alloc_args_on_stack(state_t *tracee)
 {
     /*
     this function set up necessary allocations for dlopen call.
@@ -98,12 +98,12 @@ int remote_alloc_args_on_stack(State *tracee)
 
     printf("allocating %s in address %#lx\n", g_so_path, alloc_start);
     // strlen does not include the '\0'
-    remote_malloc(tracee->pid, (void *)alloc_start, (uint8_t *)g_so_path, strlen(g_so_path) + 1);
+    remote_write_mem(tracee->pid, (void *)alloc_start, (uint8_t *)g_so_path, strlen(g_so_path) + 1);
     tracee->argv_addr = alloc_start;
     return 0;
 }
 
-uintptr_t remote_libc_start_address(State *tracee)
+uintptr_t remote_libc_start_address(state_t *tracee)
 {
     char mapsPath[BUFSIZ] = {0};
     char line[BUFSIZ] = {0};
@@ -118,7 +118,7 @@ uintptr_t remote_libc_start_address(State *tracee)
         if (!fgets(line, sizeof(line), fp))
         {
             perror("");
-            return 1;
+            goto cleanup;
         }
         if (strstr(line, LIBC_SO_PATH))
         {
@@ -135,10 +135,14 @@ uintptr_t remote_libc_start_address(State *tracee)
     } while (!base_addr);
 
     tracee->libc_addr = base_addr;
+
+cleanup:
+    if (fp)
+        fclose(fp);
     return base_addr;
 }
 
-int construct_shellcode(State *tracee)
+int construct_shellcode(state_t *tracee)
 {
     /*
     first, write the proper addresses to the shellcode
@@ -155,21 +159,19 @@ int construct_shellcode(State *tracee)
         g_shellcode_bin[i + 2] = conv_argv[i];
         g_shellcode_bin[i + 17] = conv_dlopen[i];
     }
-    tracee->n = g_shellcode_bin_len;
     return 0;
 }
 
-int remote_write_shellcode(State *tracee)
+int remote_write_shellcode(state_t *tracee)
 {
     void *ip = (void *)tracee->regs.rip;
     printf("writing %ld bytes of shellcode in address %p\n", tracee->n, ip);
-    remote_malloc(tracee->pid, ip, g_shellcode_bin, tracee->n);
-    tracee->n = g_shellcode_bin_len;
+    remote_write_mem(tracee->pid, ip, g_shellcode_bin, tracee->n);
 
     return 0;
 }
 
-int remote_run_shellcode(State *tracee)
+int remote_run_shellcode(state_t *tracee)
 {
     struct user_regs_struct regs = {0};
     int wstatus;
@@ -188,7 +190,7 @@ int remote_run_shellcode(State *tracee)
     printf("reached end of injected shellcode\n");
 
     printf("restoring patched bytes\n");
-    remote_malloc(tracee->pid, (void *)tracee->regs.rip, tracee->patched_bytes, tracee->n);
+    remote_write_mem(tracee->pid, (void *)tracee->regs.rip, tracee->patched_bytes, tracee->n);
 
     printf("restoring old registers values\n");
     ptrace(PTRACE_SETREGS, tracee->pid, 0, &tracee->regs);
