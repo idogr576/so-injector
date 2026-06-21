@@ -15,7 +15,8 @@ typedef struct State
     uintptr_t argv_addr;
 } State;
 
-extern const size_t shellcode_bin_len;
+extern const size_t g_shellcode_bin_len;
+extern char *g_so_path;
 
 int construct_shellcode(State *tracee);
 

@@ -19,14 +19,14 @@ BITS 64
 mov rdi, 0xffffffffffff ; place holder address for so allocated path mov rsi, 0x1            ; RTLD_LAZY
 mov rax, 0xeeeeeeeeeeee ; place holder address for dlopen
 call rax */
-uint8_t shellcode_bin[] = {
+uint8_t g_shellcode_bin[] = {
     0x48, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, // mov rdi, 0xffffffffffff
     0xbe, 0x01, 0x00, 0x00, 0x00,                               // mov rsi, 0x1 ; RTLD_LAZY
     0x48, 0xb8, 0xee, 0xee, 0xee, 0xee, 0xee, 0xee, 0x00, 0x00, // mov rax, 0xeeeeeeeeeeee
     0xff, 0xd0,                                                 // call rax
     0xcc                                                        // int 0x3 (breakpoint)
 };
-const size_t shellcode_bin_len = sizeof(shellcode_bin);
+const size_t g_shellcode_bin_len = sizeof(g_shellcode_bin);
 
 // TODO: find the offset dynamically given the libc.so path
 #define DLOPEN_OFFSET_LIBC (0x00000000000981f0)
@@ -36,7 +36,7 @@ const size_t shellcode_bin_len = sizeof(shellcode_bin);
 // TODO: find this path dynamically using /proc/PID/maps
 #define LIBC_SO_PATH "/usr/lib/x86_64-linux-gnu/libc.so.6"
 
-#define INJECTED_SO_PATH "/home/ido/Desktop/work/so-injectior/libinjected.so"
+char *g_so_path = NULL;
 
 size_t remote_malloc(int pid, void *addr, uint8_t *buff, size_t n)
 {
@@ -96,12 +96,10 @@ int remote_alloc_args_on_stack(State *tracee)
     uintptr_t stack_end = (uintptr_t)tracee->regs.rsp;
     uintptr_t alloc_start = stack_end - SAFETY_BUF_SIZE;
 
-    char so_path[] = INJECTED_SO_PATH;
-
-    printf("allocating %s in address %#lx\n", so_path, alloc_start);
-    remote_malloc(tracee->pid, (void *)alloc_start, (uint8_t *)so_path, sizeof(so_path));
+    printf("allocating %s in address %#lx\n", g_so_path, alloc_start);
+    // strlen does not include the '\0'
+    remote_malloc(tracee->pid, (void *)alloc_start, (uint8_t *)g_so_path, strlen(g_so_path) + 1);
     tracee->argv_addr = alloc_start;
-
     return 0;
 }
 
@@ -154,10 +152,10 @@ int construct_shellcode(State *tracee)
     unsigned char *conv_dlopen = (unsigned char *)&dlopen_addr;
     for (int i = 0; i < 6; i++) // 12 digits addresses
     {
-        shellcode_bin[i + 2] = conv_argv[i];
-        shellcode_bin[i + 17] = conv_dlopen[i];
+        g_shellcode_bin[i + 2] = conv_argv[i];
+        g_shellcode_bin[i + 17] = conv_dlopen[i];
     }
-    tracee->n = shellcode_bin_len;
+    tracee->n = g_shellcode_bin_len;
     return 0;
 }
 
@@ -165,8 +163,8 @@ int remote_write_shellcode(State *tracee)
 {
     void *ip = (void *)tracee->regs.rip;
     printf("writing %ld bytes of shellcode in address %p\n", tracee->n, ip);
-    remote_malloc(tracee->pid, ip, shellcode_bin, tracee->n);
-    tracee->n = shellcode_bin_len;
+    remote_malloc(tracee->pid, ip, g_shellcode_bin, tracee->n);
+    tracee->n = g_shellcode_bin_len;
 
     return 0;
 }
@@ -186,7 +184,7 @@ int remote_run_shellcode(State *tracee)
             return 1;
         }
         ptrace(PTRACE_GETREGS, tracee->pid, 0, &regs);
-    } while (regs.rip != tracee->regs.rip + shellcode_bin_len);
+    } while (regs.rip != tracee->regs.rip + g_shellcode_bin_len);
     printf("reached end of injected shellcode\n");
 
     printf("restoring patched bytes\n");

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 
 #include <sys/ptrace.h>
 #include <sys/wait.h>
@@ -13,9 +14,9 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        printf("Usage: %s <PID>\n", argv[0]);
+        printf("Usage: %s <PID> <SO Path>\n", argv[0]);
         return 1;
     }
     pid_t pid = atoi(argv[1]);
@@ -24,6 +25,7 @@ int main(int argc, char *argv[])
         perror("");
         return 2;
     }
+    g_so_path = strdup(argv[2]);
     char cmdline[BUFSIZ] = {0};
     char cmdlinePath[BUFSIZ] = {0};
     FILE *fp = NULL;
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
     fread(cmdline, 1, sizeof(cmdline), fp);
     printf("Intercepting PID %d: %s\n", pid, cmdline);
 
-    State remote_state = {.pid = pid, .n = shellcode_bin_len};
+    State remote_state = {.pid = pid, .n = g_shellcode_bin_len};
     State *pstate = &remote_state;
 
     if (remote_attach_process(pstate))
@@ -46,6 +48,7 @@ int main(int argc, char *argv[])
         return 3;
     }
     printf("stopped remote process at %#llx\n", remote_state.regs.rip);
+    time_t start_time = time(NULL);
 
     uintptr_t p = remote_libc_start_address(pstate);
     printf("libc start address is %#lx\n", p);
@@ -64,5 +67,10 @@ int main(int argc, char *argv[])
 
     ptrace(PTRACE_DETACH, pid, 0, 0);
 
+    time_t end_time = time(NULL);
+    printf("remote process was stopped for %ld seconds in total\n", end_time - start_time);
+
+cleanup:
+    free(g_so_path);
     return 0;
 }
