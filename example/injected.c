@@ -22,8 +22,8 @@ void main_loop(int);
 void __attribute__((constructor)) entrypoint(void)
 {
     printf("[INJECTED] Shared object loaded successfully!\n");
-    signal(SIGALRM, main_loop);
-    setitimer(ITIMER_REAL, &g_timer, NULL);
+    signal(SIGVTALRM, main_loop);
+    setitimer(ITIMER_VIRTUAL, &g_timer, NULL);
 }
 
 void main_loop(int sig)

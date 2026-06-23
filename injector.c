@@ -59,7 +59,7 @@ size_t remote_write_mem(int pid, void *addr, uint8_t *buff, size_t n)
 int remote_attach_process(state_t *tracee)
 {
     int wstatus;
-    ptrace(PTRACE_ATTACH, tracee->pid, NULL, NULL);
+    ptrace(PTRACE_ATTACH, tracee->pid, 0, 0);
     waitpid(tracee->pid, &wstatus, 0);
     if (!WIFSTOPPED(wstatus))
     {
@@ -71,7 +71,7 @@ int remote_attach_process(state_t *tracee)
 
 int remote_state_preserve(state_t *tracee)
 {
-    if (ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->regs) == -1)
+    if (ptrace(PTRACE_GETREGS, tracee->pid, 0, &tracee->regs) == -1)
     {
         perror("");
         return errno;
