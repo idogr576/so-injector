@@ -12,7 +12,8 @@ int main()
     while (1)
     {
         puts("running in a loop");
-        exact_sleep_seconds(1);
+        exact_sleep_seconds(3);
+        // sleep(3);
     }
 }
 
