@@ -13,6 +13,8 @@
 #include "injector.h"
 #include "utils.h"
 
+void welcome_message(char *path);
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -37,6 +39,7 @@ int main(int argc, char *argv[])
         PRINT("could not open file: %s\n", cmdlinePath);
         goto cleanup;
     }
+    welcome_message("swiper.msg");
     fread(cmdline, 1, sizeof(cmdline), fp);
     PRINT("Intercepting PID %d: %s\n", pid, cmdline);
 
@@ -79,4 +82,14 @@ cleanup:
     if (!errno)
         perror("");
     return 0;
+}
+
+void welcome_message(char *path)
+{
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        return;
+    char buff[BUFSIZ];
+    fread(buff, 1, sizeof(buff), fp);
+    PRINT("%s\n", buff);
 }
