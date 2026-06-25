@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS =
 
-INJECTOR = injector
+INJECTOR = swiper
 INJECTOR_SRC = main.c injector.c
 
 TOOL = libinjected

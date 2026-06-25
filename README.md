@@ -1,6 +1,21 @@
-# SO Injector
-This Project implements a simple Shared-Object injector in linux,
-using the `ptrace` mechanism.
+```txt
+                                                        
+                           ▀██▀▀██▄                     
+                            ██  ██▀─                    
+           ▄█     ▄█       ─ █  █▀▀──                   
+▄██▀▀█▓█▀ ███    ███  ▀▓▄  ──   ▀▀▀──▄██▀▀██▄  ▀▓█▄▀██▄ 
+███  ▀▀    ██    ██▀─ ▀█ ─ ░░░  ░░░   ██  ██▀─ ▀██▌ ██ ─
+ ▀▀▀▀██▄  ─ █    █▀▀──▀▀───█▓█  █▓█  ─ █  █▀▀──▀▀█  █ ──
+ ▄▓  ▓▓▀─     ░░ ▀▀▀──▀▀▓─ █▓█▄▄██▀  ▓▓▓▀▀▀▀   ▀▀▀      
+░░░  ▒▀▀──░░░ ▒▒ ░░░  ░░   █▓█        ░░  ░░▀─ ░░░      
+█▓█  ██▀──█▓█ ▓▓ █▓█  █▓─  █▓█       ─ █  █▀▀──█▓█    ─ 
+███▄▄██▀  ▀██▄██▄██▀  ██▀  ███       ▀██▄▄███  ███      
+                           █▀                           
+```
+- A tool to hijack a running process via shared object injection.
+- Runs in the main thread by handling alarm signals periodically.
+- The injected library designed by registering modules
+- Each module handles a different task (e.g socket module for receiving packets)
 
 # Build
 All of the following are allowed:
@@ -11,10 +26,10 @@ make clean
 ```
 
 # Run
-Use the example provided.
-- In one session execute `./example/remote`, the injector will attach to that process.
+You may use the example provided, or any running process (at your own risk).
+- In one session execute `./example/remote`, the injector will later attach to that process.
 - In another session run the compiled injector:
 ```bash
-sudo ./injector $(pgrep remote) $(realpath example/libinjected.so)
+sudo ./swiper $(pgrep remote) $(realpath libinjected.so)
 ```
 Keep in mind the `sudo` is necessary for the injector to work.
