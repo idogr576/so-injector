@@ -98,7 +98,7 @@ int remote_alloc_args_on_stack(state_t *tracee)
     uintptr_t stack_end = (uintptr_t)tracee->regs.rsp;
     uintptr_t alloc_start = stack_end - SAFETY_BUF_SIZE;
 
-    LOG_INFO("allocating %s in address %#lx\n", g_so_path, alloc_start);
+    LOG_INFO("allocating %s at %#lx\n", g_so_path, alloc_start);
     // strlen does not include the '\0'
     remote_write_mem(tracee->pid, (void *)alloc_start, (uint8_t *)g_so_path, strlen(g_so_path) + 1);
     tracee->argv_addr = alloc_start;

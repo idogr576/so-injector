@@ -16,7 +16,7 @@ gcc -shared -fPIC libinjected.c modules/modules.c modules/socket.c -o libinjecte
 
 const static struct itimerval g_timer = {
     .it_interval.tv_sec = 0,
-    .it_interval.tv_usec = MAIN_LOOP_INTERVAL,
+    .it_interval.tv_usec = 0,
     .it_value.tv_sec = 0,
     .it_value.tv_usec = MAIN_LOOP_INTERVAL};
 
@@ -40,6 +40,7 @@ void tool_main_loop(int sig)
             g_modules[i]->ops.iterate();
         }
     }
+    setitimer(ITIMER_REAL, &g_timer, NULL);
 }
 
 void tool_init()
@@ -53,11 +54,11 @@ void tool_init()
         g_modules[i]->id = i;
         g_modules[i]->is_loaded = !g_modules[i]->ops.init();
     }
-    LOG_DEBUG("[MODULE] Done all modules init\n");
+    LOG_DEBUG("done initializing modules\n");
 
     /* setup repetitive calls to main_loop */
     signal(SIGALRM, tool_main_loop);
-    setitimer(ITIMER_REAL, &g_timer, NULL);
+    tool_main_loop(SIGALRM);
 }
 
 void tool_destroy()

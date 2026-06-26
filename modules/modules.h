@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "socket.h"
+#include "receive.h"
+#include "test.h"
 
 typedef struct
 {
@@ -19,9 +20,13 @@ typedef struct
 } module_t;
 
 /* ----------------------- DECLARED MODULES ----------------------- */
-module_t modsocket = {
-    .ops = {.init = socket_init, .iterate = socket_iterate, .destroy = socket_destroy}
+module_t modrecv = {
+    .ops = {.init = receive_init, .iterate = receive_iterate, .destroy = receive_destroy}
 };
 
-module_t *g_modules[] = { &modsocket };
+module_t modtest = {
+    .ops = {.init = test_init, .iterate = test_iterate, .destroy = test_destroy}
+};
+/* ----------------------- DECLARED GLOBALS ----------------------- */
+module_t *g_modules[] = {&modrecv, &modtest};
 int g_num = sizeof(g_modules) / sizeof(*g_modules);
